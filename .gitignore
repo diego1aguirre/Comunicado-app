@@ -1,0 +1,5 @@
+__pycache__/
+*.py[cod]
+
+# Claude local worktrees (app lives at repo root on main)
+.claude/
