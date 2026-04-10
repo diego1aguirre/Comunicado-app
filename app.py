@@ -70,10 +70,10 @@ def process():
     want_plain = request.form.get('plain') == 'true'
     want_pdf   = request.form.get('pdf')   == 'true'
 
-    # Optional custom filename (sanitized: keep letters, digits, spaces, hyphens, underscores)
+    # Custom filename — sanitize and fall back to 'ComPrensa_' if blank
     custom_name = request.form.get('output_name', '').strip()
     custom_name = re.sub(r'[^\w\s\-]', '', custom_name, flags=re.UNICODE).strip()
-    custom_name = custom_name[:80] or None  # cap length; None = use auto name
+    custom_name = custom_name[:80] or 'ComPrensa_'
 
     if not want_plain and not want_pdf:
         return jsonify({'error': 'Selecciona al menos una salida'}), 400
@@ -94,8 +94,7 @@ def process():
             docx_filename = process_comunicado(original_path, docx_output)
         except Exception as e:
             return jsonify({'error': str(e)}), 500
-        if custom_name:
-            docx_filename = custom_name + '.docx'
+        docx_filename = custom_name + '.docx'
         final_docx = os.path.join(work_dir, docx_filename)
         os.rename(docx_output, final_docx)
 
@@ -106,14 +105,7 @@ def process():
             pdf_path = _convert_to_pdf(original_path, work_dir)
         except Exception as e:
             return jsonify({'error': f'PDF conversion failed: {e}'}), 500
-        # Name the PDF: custom > plain docx base > upload filename
-        if custom_name:
-            base_name = custom_name
-        elif docx_filename:
-            base_name = os.path.splitext(docx_filename)[0]
-        else:
-            base_name = os.path.splitext(file.filename)[0]
-        pdf_filename = base_name + '.pdf'
+        pdf_filename = custom_name + '.pdf'
         os.rename(pdf_path, os.path.join(work_dir, pdf_filename))
         pdf_path = os.path.join(work_dir, pdf_filename)
 
