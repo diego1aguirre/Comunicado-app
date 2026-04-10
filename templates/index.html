@@ -279,7 +279,7 @@
       <div class="options">
         <div class="options-label">Salidas</div>
         <div class="option-row">
-          <input type="checkbox" id="optPlain" checked disabled />
+          <input type="checkbox" id="optPlain" checked />
           <label for="optPlain">Versión lisa (.docx)</label>
         </div>
         <div class="option-row">
@@ -308,10 +308,16 @@
     const fileSizeEl   = document.getElementById('fileSize');
     const removeBtn    = document.getElementById('removeFile');
     const submitBtn    = document.getElementById('submitBtn');
+    const optPlain     = document.getElementById('optPlain');
     const optPdf       = document.getElementById('optPdf');
     const form         = document.getElementById('uploadForm');
     const statusLoad   = document.getElementById('statusLoading');
     const statusErr    = document.getElementById('statusError');
+
+    // Require at least one output to be selected
+    [optPlain, optPdf].forEach(cb => cb.addEventListener('change', () => {
+      if (!optPlain.checked && !optPdf.checked) cb.checked = true;
+    }));
 
     function formatBytes(bytes) {
       if (bytes < 1024) return bytes + ' B';
@@ -369,6 +375,7 @@
 
       const formData = new FormData();
       formData.append('file', fileInput.files[0]);
+      formData.append('plain', optPlain.checked ? 'true' : 'false');
       formData.append('pdf', optPdf.checked ? 'true' : 'false');
 
       try {

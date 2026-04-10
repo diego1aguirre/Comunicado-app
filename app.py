@@ -66,14 +66,18 @@ def process():
     if not file.filename.lower().endswith('.docx'):
         return jsonify({'error': 'Only .docx files are supported'}), 400
 
-    want_pdf = request.form.get('pdf') == 'true'
+    want_plain = request.form.get('plain') == 'true'
+    want_pdf   = request.form.get('pdf')   == 'true'
+
+    if not want_plain and not want_pdf:
+        return jsonify({'error': 'Selecciona al menos una salida'}), 400
 
     # Save uploaded file
     uid = uuid.uuid4().hex
     work_dir = os.path.join(OUTPUT_FOLDER, uid)
     os.makedirs(work_dir, exist_ok=True)
 
-    input_path = os.path.join(UPLOAD_FOLDER, f'{uid}_input.docx')
+    input_path  = os.path.join(UPLOAD_FOLDER, f'{uid}_input.docx')
     docx_output = os.path.join(work_dir, f'{uid}_plain.docx')
     file.save(input_path)
 
@@ -85,11 +89,11 @@ def process():
         if os.path.exists(input_path):
             os.remove(input_path)
 
-    # Rename the output file to its proper name for packaging
     final_docx = os.path.join(work_dir, docx_filename)
     os.rename(docx_output, final_docx)
 
-    if not want_pdf:
+    # ── docx only ──────────────────────────────────────────────────────────
+    if want_plain and not want_pdf:
         return send_file(
             final_docx,
             as_attachment=True,
@@ -97,13 +101,24 @@ def process():
             mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         )
 
-    # PDF requested — convert and return a ZIP with both files
+    # ── PDF needed — convert first ─────────────────────────────────────────
     try:
         pdf_path = _convert_to_pdf(final_docx, work_dir)
     except Exception as e:
         return jsonify({'error': f'PDF conversion failed: {e}'}), 500
 
     pdf_filename = os.path.splitext(docx_filename)[0] + '.pdf'
+
+    # ── pdf only ───────────────────────────────────────────────────────────
+    if want_pdf and not want_plain:
+        return send_file(
+            pdf_path,
+            as_attachment=True,
+            download_name=pdf_filename,
+            mimetype='application/pdf'
+        )
+
+    # ── both — return a ZIP ────────────────────────────────────────────────
     zip_filename = os.path.splitext(docx_filename)[0] + '.zip'
     zip_path = os.path.join(work_dir, zip_filename)
 
