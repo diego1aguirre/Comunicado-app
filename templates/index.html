@@ -157,6 +157,45 @@
 
     .remove-btn:hover { color: var(--fivth-color); }
 
+    /* File name input */
+    .name-field {
+      margin-top: 1.5rem;
+    }
+
+    .name-label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--main-color);
+      margin-bottom: 0.5rem;
+    }
+
+    .name-field input[type="text"] {
+      width: 100%;
+      padding: 0.7rem 1rem;
+      font-size: 0.95rem;
+      font-family: inherit;
+      color: var(--fivth-color);
+      background: #fff;
+      border: 2px solid var(--fourth-color);
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .name-field input[type="text"]:focus {
+      border-color: var(--main-color);
+      box-shadow: 0 0 0 3px rgba(244,130,32,0.15);
+    }
+
+    .name-hint {
+      font-size: 0.75rem;
+      color: var(--fourth-color);
+      margin-top: 0.35rem;
+    }
+
     /* Output options */
     .options {
       margin-top: 1.5rem;
@@ -274,6 +313,12 @@
           <div class="file-size" id="fileSize"></div>
         </div>
         <button type="button" class="remove-btn" id="removeFile" title="Quitar archivo">✕</button>
+      </div>
+
+      <div class="name-field">
+        <label class="name-label" for="outputName">Nombre del archivo</label>
+        <input type="text" id="outputName" value="ComPrensa_" spellcheck="false" />
+        <div class="name-hint">Edita o agrega texto después de "ComPrensa_"</div>
       </div>
 
       <div class="options">
