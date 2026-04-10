@@ -279,7 +279,7 @@
       <div class="options">
         <div class="options-label">Salidas</div>
         <div class="option-row">
-          <input type="checkbox" id="optPlain" checked disabled />
+          <input type="checkbox" id="optPlain" checked />
           <label for="optPlain">Versión lisa (.docx)</label>
         </div>
         <div class="option-row">
@@ -308,10 +308,16 @@
     const fileSizeEl   = document.getElementById('fileSize');
     const removeBtn    = document.getElementById('removeFile');
     const submitBtn    = document.getElementById('submitBtn');
+    const optPlain     = document.getElementById('optPlain');
     const optPdf       = document.getElementById('optPdf');
     const form         = document.getElementById('uploadForm');
     const statusLoad   = document.getElementById('statusLoading');
     const statusErr    = document.getElementById('statusError');
+
+    // Require at least one output to be selected
+    [optPlain, optPdf].forEach(cb => cb.addEventListener('change', () => {
+      if (!optPlain.checked && !optPdf.checked) cb.checked = true;
+    }));
 
     function formatBytes(bytes) {
       if (bytes < 1024) return bytes + ' B';
@@ -367,33 +373,39 @@
       statusLoad.style.display = 'flex';
       statusErr.style.display = 'none';
 
-      const formData = new FormData();
-      formData.append('file', fileInput.files[0]);
-      formData.append('pdf', optPdf.checked ? 'true' : 'false');
+      // Build the list of requests to make
+      const requests = [];
+      if (optPlain.checked) requests.push({ plain: 'true',  pdf: 'false', fallback: 'comunicado_plain.docx' });
+      if (optPdf.checked)   requests.push({ plain: 'false', pdf: 'true',  fallback: 'comunicado.pdf' });
 
       try {
-        const res = await fetch('/process', { method: 'POST', body: formData });
+        for (const opts of requests) {
+          const formData = new FormData();
+          formData.append('file', fileInput.files[0]);
+          formData.append('plain', opts.plain);
+          formData.append('pdf',   opts.pdf);
 
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || `Error ${res.status}`);
+          const res = await fetch('/process', { method: 'POST', body: formData });
+
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || `Error ${res.status}`);
+          }
+
+          const blob = await res.blob();
+          const disposition = res.headers.get('Content-Disposition') || '';
+          const match = disposition.match(/filename[^;=\n]*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/);
+          const filename = (match && (match[2] || match[3])) || opts.fallback;
+
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
         }
-
-        // Trigger download
-        const blob = await res.blob();
-        const disposition = res.headers.get('Content-Disposition') || '';
-        const match = disposition.match(/filename[^;=\n]*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/);
-        const filename = (match && (match[2] || match[3])) || (optPdf.checked ? 'comunicado.zip' : 'comunicado_plain.docx');
-
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-
       } catch (err) {
         statusErr.textContent = err.message;
         statusErr.style.display = 'block';
