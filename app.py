@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 import subprocess
 import shutil
@@ -7,6 +8,7 @@ from processor import process_comunicado
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 UPLOAD_FOLDER = '/tmp/comunicado_uploads'
 OUTPUT_FOLDER = '/tmp/comunicado_outputs'
@@ -68,6 +70,11 @@ def process():
     want_plain = request.form.get('plain') == 'true'
     want_pdf   = request.form.get('pdf')   == 'true'
 
+    # Custom filename — sanitize and fall back to 'ComPrensa_' if blank
+    custom_name = request.form.get('output_name', '').strip()
+    custom_name = re.sub(r'[^\w\s\-]', '', custom_name, flags=re.UNICODE).strip()
+    custom_name = custom_name[:80] or 'ComPrensa_'
+
     if not want_plain and not want_pdf:
         return jsonify({'error': 'Selecciona al menos una salida'}), 400
 
@@ -87,6 +94,7 @@ def process():
             docx_filename = process_comunicado(original_path, docx_output)
         except Exception as e:
             return jsonify({'error': str(e)}), 500
+        docx_filename = custom_name + '.docx'
         final_docx = os.path.join(work_dir, docx_filename)
         os.rename(docx_output, final_docx)
 
@@ -97,10 +105,7 @@ def process():
             pdf_path = _convert_to_pdf(original_path, work_dir)
         except Exception as e:
             return jsonify({'error': f'PDF conversion failed: {e}'}), 500
-        # Name the PDF after the plain docx if we have it, else derive from upload
-        base_name = os.path.splitext(docx_filename)[0] if docx_filename else \
-                    os.path.splitext(file.filename)[0]
-        pdf_filename = base_name + '.pdf'
+        pdf_filename = custom_name + '.pdf'
         os.rename(pdf_path, os.path.join(work_dir, pdf_filename))
         pdf_path = os.path.join(work_dir, pdf_filename)
 
