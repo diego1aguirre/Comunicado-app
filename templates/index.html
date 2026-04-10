@@ -282,9 +282,9 @@
           <input type="checkbox" id="optPlain" checked disabled />
           <label for="optPlain">Versión lisa (.docx)</label>
         </div>
-        <div class="option-row" style="opacity:0.4;">
-          <input type="checkbox" id="optPdf" disabled />
-          <label for="optPdf">PDF &nbsp;<span class="badge">Próximamente</span></label>
+        <div class="option-row">
+          <input type="checkbox" id="optPdf" />
+          <label for="optPdf">PDF</label>
         </div>
       </div>
 
@@ -301,16 +301,17 @@
   </div>
 
   <script>
-    const fileInput   = document.getElementById('fileInput');
-    const dropZone    = document.getElementById('dropZone');
+    const fileInput    = document.getElementById('fileInput');
+    const dropZone     = document.getElementById('dropZone');
     const fileSelected = document.getElementById('fileSelected');
-    const fileNameEl  = document.getElementById('fileName');
-    const fileSizeEl  = document.getElementById('fileSize');
-    const removeBtn   = document.getElementById('removeFile');
-    const submitBtn   = document.getElementById('submitBtn');
-    const form        = document.getElementById('uploadForm');
-    const statusLoad  = document.getElementById('statusLoading');
-    const statusErr   = document.getElementById('statusError');
+    const fileNameEl   = document.getElementById('fileName');
+    const fileSizeEl   = document.getElementById('fileSize');
+    const removeBtn    = document.getElementById('removeFile');
+    const submitBtn    = document.getElementById('submitBtn');
+    const optPdf       = document.getElementById('optPdf');
+    const form         = document.getElementById('uploadForm');
+    const statusLoad   = document.getElementById('statusLoading');
+    const statusErr    = document.getElementById('statusError');
 
     function formatBytes(bytes) {
       if (bytes < 1024) return bytes + ' B';
@@ -368,6 +369,7 @@
 
       const formData = new FormData();
       formData.append('file', fileInput.files[0]);
+      formData.append('pdf', optPdf.checked ? 'true' : 'false');
 
       try {
         const res = await fetch('/process', { method: 'POST', body: formData });
@@ -380,8 +382,8 @@
         // Trigger download
         const blob = await res.blob();
         const disposition = res.headers.get('Content-Disposition') || '';
-        const match = disposition.match(/filename="?([^"]+)"?/);
-        const filename = match ? match[1] : 'comunicado_plain.docx';
+        const match = disposition.match(/filename[^;=\n]*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/);
+        const filename = (match && (match[2] || match[3])) || (optPdf.checked ? 'comunicado.zip' : 'comunicado_plain.docx');
 
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
