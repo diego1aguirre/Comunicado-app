@@ -2,6 +2,7 @@ import os
 import uuid
 import zipfile
 import subprocess
+import shutil
 from flask import Flask, request, render_template, send_file, jsonify
 from processor import process_comunicado
 
@@ -14,9 +15,32 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 
+_SOFFICE_CANDIDATES = [
+    'soffice',
+    'libreoffice',
+    '/usr/bin/soffice',
+    '/usr/lib/libreoffice/program/soffice',
+    '/Applications/LibreOffice.app/Contents/MacOS/soffice',  # macOS
+]
+
+def _find_soffice():
+    """Return the path to the soffice/libreoffice binary, or raise."""
+    # Allow explicit override via env var
+    override = os.environ.get('SOFFICE_PATH')
+    if override:
+        return override
+    for candidate in _SOFFICE_CANDIDATES:
+        path = shutil.which(candidate) or (candidate if os.path.isfile(candidate) else None)
+        if path:
+            return path
+    raise FileNotFoundError(
+        'LibreOffice not found. Install it or set the SOFFICE_PATH environment variable.'
+    )
+
+
 def _convert_to_pdf(docx_path, out_dir):
     """Convert a .docx to PDF using LibreOffice headless and return the PDF path."""
-    soffice = os.environ.get('SOFFICE_PATH', 'soffice')
+    soffice = _find_soffice()
     subprocess.run(
         [soffice, '--headless', '--convert-to', 'pdf', '--outdir', out_dir, docx_path],
         check=True,
