@@ -1,6 +1,5 @@
 import os
 import uuid
-import zipfile
 import subprocess
 import shutil
 from flask import Flask, request, render_template, send_file, jsonify
@@ -106,23 +105,12 @@ def process():
         pdf_path = os.path.join(work_dir, pdf_filename)
 
     # ── Return ─────────────────────────────────────────────────────────────
-    if want_plain and not want_pdf:
+    if want_plain:
         return send_file(final_docx, as_attachment=True, download_name=docx_filename,
                          mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
 
-    if want_pdf and not want_plain:
-        return send_file(pdf_path, as_attachment=True, download_name=pdf_filename,
-                         mimetype='application/pdf')
-
-    # Both — ZIP
-    zip_filename = (os.path.splitext(docx_filename)[0] if docx_filename else 'comunicado') + '.zip'
-    zip_path = os.path.join(work_dir, zip_filename)
-    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
-        zf.write(final_docx, docx_filename)
-        zf.write(pdf_path, pdf_filename)
-
-    return send_file(zip_path, as_attachment=True, download_name=zip_filename,
-                     mimetype='application/zip')
+    return send_file(pdf_path, as_attachment=True, download_name=pdf_filename,
+                     mimetype='application/pdf')
 
 
 if __name__ == '__main__':
