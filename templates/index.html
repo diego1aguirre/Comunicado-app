@@ -196,6 +196,49 @@
       letter-spacing: 0.05em;
     }
 
+    /* Filename field */
+    .filename-field {
+      margin-top: 1.75rem;
+      background: #fdf6ee;
+      border: 1.5px solid #f5dfc0;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+    }
+
+    .filename-field .filename-label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--main-color);
+      margin-bottom: 0.6rem;
+    }
+
+    .filename-field input[type="text"] {
+      width: 100%;
+      padding: 0.65rem 0.9rem;
+      border: 2px solid #f5dfc0;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--fivth-color);
+      background: #fff;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .filename-field input[type="text"]:focus {
+      border-color: var(--main-color);
+      box-shadow: 0 0 0 3px rgba(244,130,32,0.12);
+    }
+
+    .filename-hint {
+      font-size: 0.75rem;
+      color: var(--third-color);
+      margin-top: 0.45rem;
+    }
+
     /* Submit button */
     .submit-btn {
       display: block;
@@ -215,40 +258,12 @@
     .submit-btn:hover { background: var(--second-color); }
     .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    /* Status messages */
-    .status {
+    .error-msg {
       display: none;
-      margin-top: 1rem;
-      padding: 0.75rem 1rem;
-      border-radius: 6px;
-      font-size: 0.88rem;
-    }
-
-    .status.loading {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      background: #fdf6ee;
-      color: var(--third-color);
-    }
-
-    .status.error {
-      display: block;
-      background: #fff0f0;
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
       color: #c00;
     }
-
-    .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid var(--fourth-color);
-      border-top-color: var(--main-color);
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      flex-shrink: 0;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -276,6 +291,12 @@
         <button type="button" class="remove-btn" id="removeFile" title="Quitar archivo">✕</button>
       </div>
 
+      <div class="filename-field">
+        <label class="filename-label" for="outputName">Nombre del archivo</label>
+        <input type="text" id="outputName" value="ComPrensa_" spellcheck="false" autocomplete="off" />
+        <div class="filename-hint">Edita o agrega texto al nombre. Deja vacío para usar el nombre automático.</div>
+      </div>
+
       <div class="options">
         <div class="options-label">Salidas</div>
         <div class="option-row">
@@ -291,13 +312,8 @@
       <button type="submit" class="submit-btn" id="submitBtn" disabled>
         Generar
       </button>
+      <p class="error-msg" id="errorMsg"></p>
     </form>
-
-    <div class="status loading" id="statusLoading">
-      <div class="spinner"></div>
-      Procesando comunicado…
-    </div>
-    <div class="status error" id="statusError"></div>
   </div>
 
   <script>
@@ -310,9 +326,9 @@
     const submitBtn    = document.getElementById('submitBtn');
     const optPlain     = document.getElementById('optPlain');
     const optPdf       = document.getElementById('optPdf');
+    const outputName   = document.getElementById('outputName');
     const form         = document.getElementById('uploadForm');
-    const statusLoad   = document.getElementById('statusLoading');
-    const statusErr    = document.getElementById('statusError');
+    const errorMsg     = document.getElementById('errorMsg');
 
     // Require at least one output to be selected
     [optPlain, optPdf].forEach(cb => cb.addEventListener('change', () => {
@@ -330,7 +346,7 @@
       fileSizeEl.textContent = formatBytes(file.size);
       fileSelected.classList.add('visible');
       submitBtn.disabled = false;
-      statusErr.style.display = 'none';
+      errorMsg.style.display = 'none';
     }
 
     function clearFile() {
@@ -359,8 +375,8 @@
         fileInput.files = dt.files;
         setFile(file);
       } else {
-        statusErr.textContent = 'Solo se aceptan archivos .docx';
-        statusErr.style.display = 'block';
+        errorMsg.textContent = 'Solo se aceptan archivos .docx';
+        errorMsg.style.display = 'block';
       }
     });
 
@@ -370,8 +386,8 @@
       if (!fileInput.files[0]) return;
 
       submitBtn.disabled = true;
-      statusLoad.style.display = 'flex';
-      statusErr.style.display = 'none';
+      submitBtn.textContent = 'Generando…';
+      errorMsg.style.display = 'none';
 
       // Build the list of requests to make
       const requests = [];
@@ -384,6 +400,7 @@
           formData.append('file', fileInput.files[0]);
           formData.append('plain', opts.plain);
           formData.append('pdf',   opts.pdf);
+          formData.append('output_name', outputName.value.trim());
 
           const res = await fetch('/process', { method: 'POST', body: formData });
 
@@ -407,10 +424,10 @@
           URL.revokeObjectURL(url);
         }
       } catch (err) {
-        statusErr.textContent = err.message;
-        statusErr.style.display = 'block';
+        errorMsg.textContent = err.message;
+        errorMsg.style.display = 'block';
       } finally {
-        statusLoad.style.display = 'none';
+        submitBtn.textContent = 'Generar';
         submitBtn.disabled = false;
       }
     });
