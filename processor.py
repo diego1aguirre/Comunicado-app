@@ -30,6 +30,11 @@ def _para_text(para_el):
     return ''.join(t.text or '' for t in para_el.iter(qn('w:t')))
 
 
+def _para_is_list_item(para_el):
+    """True if the paragraph has a <w:numPr> (bulleted/numbered list item)."""
+    return para_el.find('.//' + qn('w:numPr')) is not None
+
+
 def _table_is_multi_para(tbl_el):
     """True if any cell in the table contains more than one non-empty paragraph."""
     for tc in tbl_el.iter(qn('w:tc')):
@@ -64,6 +69,9 @@ def _extract_items(doc):
             style = _para_style(child)
 
             if stripped:
+                # List items (numPr) get a dash-tab prefix matching the original format
+                if _para_is_list_item(child):
+                    stripped = '-\t' + stripped
                 items.append({
                     'text': stripped,
                     'blank': False,
@@ -111,7 +119,10 @@ def _extract_items(doc):
                     for tc in cells:
                         p = tc.find(qn('w:p'))
                         row_parts.append(_para_text(p) if p is not None else '')
-                    row_text = ''.join(row_parts).strip()
+                    # Join non-empty cells with double-tab so columns are visually
+                    # separated (matches the original ComPrensa table layout).
+                    non_empty_parts = [part for part in row_parts if part.strip()]
+                    row_text = '\t\t'.join(non_empty_parts).strip()
                     if row_text:
                         # First row: allow auto-separator before it (separates from preceding content).
                         # Subsequent rows: suppress_sep keeps them consecutive with no blank between.
